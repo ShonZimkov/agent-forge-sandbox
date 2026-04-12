@@ -908,6 +908,309 @@ app.get('/dashboard', (req, res) => {
   res.type('html').send(buildDashboardHTML());
 });
 
+function buildBoardHTML() {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Collaboration Board</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --color-bg: #f1f5f9;
+      --color-surface: #ffffff;
+      --color-text: #1e293b;
+      --color-text-muted: #64748b;
+      --color-border: #e2e8f0;
+      --color-red: #ef4444;
+      --color-blue: #3b82f6;
+      --color-green: #22c55e;
+      --color-yellow: #eab308;
+      --color-purple: #8b5cf6;
+      --color-gray: #9ca3af;
+      --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+      --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -2px rgba(0,0,0,0.05);
+      --radius: 8px;
+      --font-stack: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    }
+
+    body {
+      font-family: var(--font-stack);
+      background: var(--color-bg);
+      color: var(--color-text);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    /* Header */
+    .board-header {
+      background: #1e293b;
+      color: #ffffff;
+      padding: 16px 24px;
+      font-size: 1.25rem;
+      font-weight: 700;
+    }
+
+    /* Error banner */
+    .error-banner {
+      display: none;
+      background: #fef2f2;
+      border: 1px solid var(--color-red);
+      color: #991b1b;
+      padding: 12px 24px;
+      font-size: 0.95rem;
+    }
+    .error-banner.visible { display: block; }
+
+    /* Board layout */
+    .board-container {
+      display: flex;
+      gap: 16px;
+      padding: 24px;
+      overflow-x: auto;
+      align-items: flex-start;
+      min-height: calc(100vh - 60px);
+    }
+
+    /* Column */
+    .column {
+      background: #e2e8f0;
+      border-radius: var(--radius);
+      min-width: 280px;
+      max-width: 320px;
+      flex: 1 0 280px;
+      display: flex;
+      flex-direction: column;
+    }
+    .column-header {
+      padding: 12px 16px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      color: var(--color-text);
+      border-bottom: 1px solid #cbd5e1;
+    }
+    .column-header .card-count {
+      color: var(--color-text-muted);
+      font-weight: 400;
+    }
+    .column-body {
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-height: 60px;
+    }
+
+    /* Empty state */
+    .empty-placeholder {
+      color: var(--color-text-muted);
+      font-size: 0.85rem;
+      text-align: center;
+      padding: 20px 8px;
+      font-style: italic;
+    }
+
+    /* Card */
+    .card {
+      background: var(--color-surface);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-md);
+      padding: 12px 14px;
+      border-left: 4px solid var(--color-gray);
+    }
+    .card[data-color="red"]    { border-left-color: var(--color-red); }
+    .card[data-color="blue"]   { border-left-color: var(--color-blue); }
+    .card[data-color="green"]  { border-left-color: var(--color-green); }
+    .card[data-color="yellow"] { border-left-color: var(--color-yellow); }
+    .card[data-color="purple"] { border-left-color: var(--color-purple); }
+    .card[data-color="gray"]   { border-left-color: var(--color-gray); }
+
+    .card-title {
+      font-weight: 600;
+      font-size: 0.9rem;
+      margin-bottom: 6px;
+      color: var(--color-text);
+    }
+    .card-content {
+      font-size: 0.85rem;
+      color: #334155;
+      line-height: 1.5;
+    }
+
+    /* Markdown content styles */
+    .card-content h1, .card-content h2, .card-content h3,
+    .card-content h4, .card-content h5, .card-content h6 {
+      margin: 8px 0 4px 0;
+      line-height: 1.3;
+    }
+    .card-content h1 { font-size: 1.1rem; }
+    .card-content h2 { font-size: 1rem; }
+    .card-content h3 { font-size: 0.95rem; }
+    .card-content p { margin: 4px 0; }
+    .card-content ul, .card-content ol {
+      margin: 4px 0;
+      padding-left: 20px;
+    }
+    .card-content a {
+      color: var(--color-blue);
+      text-decoration: underline;
+    }
+    .card-content code {
+      background: #f1f5f9;
+      padding: 1px 4px;
+      border-radius: 3px;
+      font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+      font-size: 0.82rem;
+    }
+    .card-content pre {
+      background: #1e293b;
+      color: #e2e8f0;
+      padding: 10px 12px;
+      border-radius: 6px;
+      overflow-x: auto;
+      margin: 6px 0;
+    }
+    .card-content pre code {
+      background: none;
+      padding: 0;
+      color: inherit;
+      font-size: 0.8rem;
+    }
+    .card-content strong { font-weight: 600; }
+    .card-content em { font-style: italic; }
+
+    /* Loading state */
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: var(--color-text-muted);
+      font-size: 0.95rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="board-header">Collaboration Board</div>
+  <div id="error-banner" class="error-banner"></div>
+  <div id="board" class="board-container">
+    <div class="loading">Loading board\u2026</div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"><\/script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js"><\/script>
+  <script>
+    (function() {
+      var boardEl = document.getElementById('board');
+      var errorEl = document.getElementById('error-banner');
+
+      function showError(msg) {
+        errorEl.textContent = msg;
+        errorEl.classList.add('visible');
+      }
+
+      function hideError() {
+        errorEl.classList.remove('visible');
+        errorEl.textContent = '';
+      }
+
+      function escapeHTML(str) {
+        var div = document.createElement('div');
+        div.appendChild(document.createTextNode(str));
+        return div.innerHTML;
+      }
+
+      function renderMarkdown(md) {
+        if (!md) return '';
+        try {
+          var raw = marked.parse(md);
+          return DOMPurify.sanitize(raw);
+        } catch (e) {
+          return escapeHTML(md);
+        }
+      }
+
+      function renderBoard(columns, cardsByColumn) {
+        boardEl.innerHTML = '';
+        columns.forEach(function(col) {
+          var colCards = cardsByColumn[col.name] || [];
+          var colEl = document.createElement('div');
+          colEl.className = 'column';
+
+          var header = document.createElement('div');
+          header.className = 'column-header';
+          header.innerHTML = escapeHTML(col.name) + ' <span class="card-count">(' + colCards.length + ')<\/span>';
+          colEl.appendChild(header);
+
+          var body = document.createElement('div');
+          body.className = 'column-body';
+
+          if (colCards.length === 0) {
+            var placeholder = document.createElement('div');
+            placeholder.className = 'empty-placeholder';
+            placeholder.textContent = 'No cards yet';
+            body.appendChild(placeholder);
+          } else {
+            colCards.forEach(function(card) {
+              var cardEl = document.createElement('div');
+              cardEl.className = 'card';
+              cardEl.setAttribute('data-color', card.color || 'gray');
+
+              var titleEl = document.createElement('div');
+              titleEl.className = 'card-title';
+              titleEl.textContent = card.title;
+              cardEl.appendChild(titleEl);
+
+              if (card.content) {
+                var contentEl = document.createElement('div');
+                contentEl.className = 'card-content';
+                contentEl.innerHTML = renderMarkdown(card.content);
+                cardEl.appendChild(contentEl);
+              }
+
+              body.appendChild(cardEl);
+            });
+          }
+
+          colEl.appendChild(body);
+          boardEl.appendChild(colEl);
+        });
+      }
+
+      function fetchBoard() {
+        Promise.all([
+          fetch('/board/columns').then(function(r) {
+            if (!r.ok) throw new Error('Failed to load columns (HTTP ' + r.status + ')');
+            return r.json();
+          }),
+          fetch('/board/cards').then(function(r) {
+            if (!r.ok) throw new Error('Failed to load cards (HTTP ' + r.status + ')');
+            return r.json();
+          })
+        ])
+        .then(function(results) {
+          hideError();
+          var columns = results[0].columns || [];
+          var cardsByColumn = results[1].columns || {};
+          renderBoard(columns, cardsByColumn);
+        })
+        .catch(function(err) {
+          showError('Error loading board: ' + err.message);
+          boardEl.innerHTML = '';
+        });
+      }
+
+      fetchBoard();
+    })();
+  <\/script>
+</body>
+</html>`;
+}
+
+app.get('/board', (req, res) => {
+  res.type('html').send(buildBoardHTML());
+});
+
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
