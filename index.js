@@ -14,6 +14,18 @@ let nextId = 1;
 const notes = [];
 let nextNoteId = 1;
 
+const columns = [
+  { id: 1, name: 'Ideas', order: 0 },
+  { id: 2, name: 'In Progress', order: 1 },
+  { id: 3, name: 'Done', order: 2 },
+];
+let nextColumnId = 4;
+
+const cards = [];
+let nextCardId = 1;
+
+const VALID_CARD_COLORS = ['red', 'blue', 'green', 'yellow', 'purple', 'gray'];
+
 const normalizeTags = (tags) => [...new Set(tags.map(t => t.trim().toLowerCase()).filter(Boolean))];
 
 app.use(express.json());
@@ -152,6 +164,213 @@ app.delete('/notes/:id', (req, res) => {
 
   note.deletedAt = new Date().toISOString();
   res.json({ message: 'Note deleted' });
+});
+
+// --- Board: Columns ---
+
+const validateColumnId = (id) => {
+  const parsed = Number(id);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+};
+
+app.get('/board/columns', (req, res) => {
+  const sorted = [...columns].sort((a, b) => a.order - b.order);
+  res.json({ columns: sorted });
+});
+
+app.post('/board/columns', (req, res) => {
+  const { name } = req.body;
+
+  if (name === undefined || name === null || typeof name !== 'string' || name.trim() === '') {
+    return res.status(400).json({ error: 'Column name is required' });
+  }
+  if (name.length > 50) {
+    return res.status(400).json({ error: 'Column name must not exceed 50 characters' });
+  }
+
+  const trimmedName = name.trim();
+  const duplicate = columns.find(c => c.name === trimmedName);
+  if (duplicate) {
+    return res.status(409).json({ error: 'A column with that name already exists' });
+  }
+
+  const maxOrder = columns.length > 0 ? Math.max(...columns.map(c => c.order)) : -1;
+  const column = {
+    id: nextColumnId++,
+    name: trimmedName,
+    order: maxOrder + 1,
+  };
+  columns.push(column);
+  res.status(201).json(column);
+});
+
+app.patch('/board/columns/:id/reorder', (req, res) => {
+  const id = validateColumnId(req.params.id);
+  if (id === null) {
+    return res.status(400).json({ error: 'Invalid column ID' });
+  }
+
+  const column = columns.find(c => c.id === id);
+  if (!column) {
+    return res.status(404).json({ error: 'Column not found' });
+  }
+
+  const { order } = req.body;
+  if (order === undefined || order === null || typeof order !== 'number' || !Number.isInteger(order) || order < 0) {
+    return res.status(400).json({ error: 'Order must be a non-negative integer' });
+  }
+
+  const oldOrder = column.order;
+  const newOrder = order;
+
+  if (newOrder !== oldOrder) {
+    if (newOrder > oldOrder) {
+      // Moving down: shift items between old+1..new up by one
+      for (const c of columns) {
+        if (c.id !== id && c.order > oldOrder && c.order <= newOrder) {
+          c.order--;
+        }
+      }
+    } else {
+      // Moving up: shift items between new..old-1 down by one
+      for (const c of columns) {
+        if (c.id !== id && c.order >= newOrder && c.order < oldOrder) {
+          c.order++;
+        }
+      }
+    }
+    column.order = newOrder;
+  }
+
+  const sorted = [...columns].sort((a, b) => a.order - b.order);
+  res.json({ columns: sorted });
+});
+
+// --- Board: Cards ---
+
+const validateCardId = (id) => {
+  const parsed = Number(id);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+};
+
+app.post('/board/cards', (req, res) => {
+  const { title, content, column, color, position } = req.body;
+
+  if (title === undefined || title === null || typeof title !== 'string' || title.trim() === '') {
+    return res.status(400).json({ error: 'Title is required' });
+  }
+  if (title.length > 200) {
+    return res.status(400).json({ error: 'Title must not exceed 200 characters' });
+  }
+  if (color !== undefined && !VALID_CARD_COLORS.includes(color)) {
+    return res.status(400).json({ error: 'Color must be one of: ' + VALID_CARD_COLORS.join(', ') });
+  }
+
+  const cardColumn = column !== undefined ? column : 'Ideas';
+  const matchedColumn = columns.find(c => c.name === cardColumn);
+  if (!matchedColumn) {
+    return res.status(400).json({ error: 'Column does not exist' });
+  }
+
+  const cardsInColumn = cards.filter(c => c.column === cardColumn);
+  const cardPosition = position !== undefined ? position :
+    (cardsInColumn.length > 0 ? Math.max(...cardsInColumn.map(c => c.position)) + 1 : 0);
+
+  const now = new Date().toISOString();
+  const card = {
+    id: nextCardId++,
+    title: title.trim(),
+    content: content !== undefined && content !== null ? String(content) : '',
+    column: cardColumn,
+    color: color !== undefined ? color : 'gray',
+    position: cardPosition,
+    createdAt: now,
+    updatedAt: now,
+  };
+  cards.push(card);
+  res.status(201).json(card);
+});
+
+app.get('/board/cards', (req, res) => {
+  const grouped = {};
+  for (const col of columns) {
+    grouped[col.name] = cards
+      .filter(c => c.column === col.name)
+      .sort((a, b) => a.position - b.position);
+  }
+  res.json({ columns: grouped });
+});
+
+app.patch('/board/cards/:id', (req, res) => {
+  const id = validateCardId(req.params.id);
+  if (id === null) {
+    return res.status(400).json({ error: 'Invalid card ID' });
+  }
+
+  const card = cards.find(c => c.id === id);
+  if (!card) {
+    return res.status(404).json({ error: 'Card not found' });
+  }
+
+  const { title, content, column, color, position } = req.body;
+
+  if (title !== undefined) {
+    if (typeof title !== 'string' || title.trim() === '') {
+      return res.status(400).json({ error: 'Title is required' });
+    }
+    if (title.length > 200) {
+      return res.status(400).json({ error: 'Title must not exceed 200 characters' });
+    }
+    card.title = title.trim();
+  }
+
+  if (color !== undefined) {
+    if (!VALID_CARD_COLORS.includes(color)) {
+      return res.status(400).json({ error: 'Color must be one of: ' + VALID_CARD_COLORS.join(', ') });
+    }
+    card.color = color;
+  }
+
+  if (column !== undefined) {
+    const matchedColumn = columns.find(c => c.name === column);
+    if (!matchedColumn) {
+      return res.status(400).json({ error: 'Column does not exist' });
+    }
+    const movingColumns = column !== card.column;
+    card.column = column;
+
+    if (movingColumns && position === undefined) {
+      // Append to end of target column
+      const cardsInTarget = cards.filter(c => c.column === column && c.id !== id);
+      card.position = cardsInTarget.length > 0 ? Math.max(...cardsInTarget.map(c => c.position)) + 1 : 0;
+    }
+  }
+
+  if (content !== undefined) {
+    card.content = String(content);
+  }
+
+  if (position !== undefined) {
+    card.position = position;
+  }
+
+  card.updatedAt = new Date().toISOString();
+  res.json(card);
+});
+
+app.delete('/board/cards/:id', (req, res) => {
+  const id = validateCardId(req.params.id);
+  if (id === null) {
+    return res.status(400).json({ error: 'Invalid card ID' });
+  }
+
+  const index = cards.findIndex(c => c.id === id);
+  if (index === -1) {
+    return res.status(404).json({ error: 'Card not found' });
+  }
+
+  cards.splice(index, 1);
+  res.status(204).send();
 });
 
 // --- Dashboard ---
