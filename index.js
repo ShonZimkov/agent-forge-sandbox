@@ -301,6 +301,394 @@ app.get('/api/dashboard', async (req, res) => {
   }
 });
 
+// --- HTML Dashboard ---
+
+function buildDashboardHTML() {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agent Forge — Dashboard</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --color-bg: #f8fafc;
+      --color-surface: #ffffff;
+      --color-text: #1e293b;
+      --color-text-muted: #64748b;
+      --color-border: #e2e8f0;
+      --color-green: #22c55e;
+      --color-yellow: #eab308;
+      --color-gray: #9ca3af;
+      --color-blue: #3b82f6;
+      --color-red: #ef4444;
+      --color-purple: #8b5cf6;
+      --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+      --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -2px rgba(0,0,0,0.05);
+      --radius: 8px;
+      --font-stack: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    }
+
+    body {
+      font-family: var(--font-stack);
+      background: var(--color-bg);
+      color: var(--color-text);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 24px 16px;
+    }
+
+    /* Header */
+    .header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+    .header h1 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .header .updated {
+      color: var(--color-text-muted);
+      font-size: 0.85rem;
+    }
+
+    /* Loading / Error states */
+    .state-message {
+      text-align: center;
+      padding: 64px 16px;
+    }
+    .spinner {
+      width: 36px;
+      height: 36px;
+      border: 3px solid var(--color-border);
+      border-top-color: var(--color-blue);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 16px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .error-text { color: var(--color-red); font-weight: 600; margin-bottom: 12px; }
+    .retry-btn {
+      padding: 10px 24px;
+      background: var(--color-blue);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius);
+      font-size: 0.9rem;
+      cursor: pointer;
+      min-height: 44px;
+      min-width: 44px;
+    }
+    .retry-btn:hover { opacity: 0.9; }
+
+    /* Sections */
+    .section { margin-bottom: 32px; }
+    .section-title {
+      font-size: 1.15rem;
+      font-weight: 600;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid var(--color-border);
+    }
+    .empty-msg {
+      color: var(--color-text-muted);
+      font-style: italic;
+      padding: 16px 0;
+    }
+
+    /* Feature cards */
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+    }
+    .card {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      padding: 16px;
+      box-shadow: var(--shadow-sm);
+      transition: box-shadow 0.15s;
+    }
+    .card:hover { box-shadow: var(--shadow-md); }
+    .card-title a {
+      color: var(--color-text);
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+    .card-title a:hover { color: var(--color-blue); text-decoration: underline; }
+    .card-assignee {
+      color: var(--color-text-muted);
+      font-size: 0.8rem;
+      margin-top: 4px;
+    }
+
+    /* Progress bar */
+    .progress-wrap { margin-top: 10px; }
+    .progress-bar-bg {
+      width: 100%;
+      height: 8px;
+      background: var(--color-border);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.3s;
+    }
+    .progress-text {
+      font-size: 0.78rem;
+      color: var(--color-text-muted);
+      margin-top: 4px;
+    }
+
+    /* Subtask details */
+    .subtask-details {
+      margin-top: 10px;
+      font-size: 0.85rem;
+    }
+    .subtask-details summary {
+      cursor: pointer;
+      color: var(--color-text-muted);
+      user-select: none;
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+    }
+    .subtask-details summary:hover { color: var(--color-text); }
+    .subtask-list {
+      list-style: none;
+      margin-top: 6px;
+      padding-left: 4px;
+    }
+    .subtask-list li {
+      padding: 3px 0;
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+    }
+    .subtask-list li.done { color: var(--color-text-muted); text-decoration: line-through; }
+    .subtask-check { flex-shrink: 0; }
+
+    /* Activity timeline */
+    .timeline { position: relative; padding-left: 28px; }
+    .timeline::before {
+      content: '';
+      position: absolute;
+      left: 10px;
+      top: 4px;
+      bottom: 4px;
+      width: 2px;
+      background: var(--color-border);
+    }
+    .timeline-item {
+      position: relative;
+      padding-bottom: 20px;
+    }
+    .timeline-icon {
+      position: absolute;
+      left: -28px;
+      top: 2px;
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      background: var(--color-surface);
+      border-radius: 50%;
+      z-index: 1;
+    }
+    .timeline-actor {
+      font-weight: 600;
+      font-size: 0.85rem;
+    }
+    .timeline-desc {
+      font-size: 0.85rem;
+      color: var(--color-text-muted);
+      margin-top: 2px;
+    }
+    .timeline-desc a { color: var(--color-blue); text-decoration: none; }
+    .timeline-desc a:hover { text-decoration: underline; }
+    .timeline-time {
+      font-size: 0.75rem;
+      color: var(--color-gray);
+      margin-top: 2px;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .card-grid {
+        grid-template-columns: 1fr;
+      }
+      .header h1 { font-size: 1.4rem; }
+      .container { padding: 16px 12px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div id="app">
+      <div class="state-message">
+        <div class="spinner"></div>
+        <p>Loading dashboard\u2026</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      var REFRESH_MS = 5 * 60 * 1000;
+      var appEl = document.getElementById('app');
+
+      function relativeTime(iso) {
+        if (!iso) return '';
+        var diff = (Date.now() - new Date(iso).getTime()) / 1000;
+        if (diff < 0) diff = 0;
+        if (diff < 60) return 'just now';
+        if (diff < 3600) {
+          var m = Math.floor(diff / 60);
+          return m + ' minute' + (m !== 1 ? 's' : '') + ' ago';
+        }
+        if (diff < 86400) {
+          var h = Math.floor(diff / 3600);
+          return h + ' hour' + (h !== 1 ? 's' : '') + ' ago';
+        }
+        var d = Math.floor(diff / 86400);
+        return d + ' day' + (d !== 1 ? 's' : '') + ' ago';
+      }
+
+      function escapeHTML(str) {
+        if (!str) return '';
+        return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+      }
+
+      function progressColor(percent, total) {
+        if (total === 0) return 'var(--color-gray)';
+        if (percent > 60) return 'var(--color-green)';
+        if (percent >= 30) return 'var(--color-yellow)';
+        return 'var(--color-gray)';
+      }
+
+      function eventIcon(type) {
+        switch (type) {
+          case 'IssuesEvent': return '\\u{1F4CB}';
+          case 'PullRequestEvent': return '\\u{1F500}';
+          case 'PushEvent': return '\\u{1F680}';
+          case 'IssueCommentEvent': return '\\u{1F4AC}';
+          default: return '\\u{26A1}';
+        }
+      }
+
+      function renderCard(f) {
+        var color = progressColor(f.progress.percent, f.progress.total);
+        var assigneeHTML = f.assignee
+          ? '<div class="card-assignee">Assigned to ' + escapeHTML(f.assignee) + '</div>'
+          : '';
+
+        var progressHTML = '';
+        if (f.progress.total > 0) {
+          progressHTML = '<div class="progress-wrap">' +
+            '<div class="progress-bar-bg"><div class="progress-bar-fill" style="width:' + f.progress.percent + '%;background:' + color + '"></div></div>' +
+            '<div class="progress-text">' + f.progress.done + ' of ' + f.progress.total + ' tasks done</div>' +
+            '</div>';
+        }
+
+        var subtaskHTML = '';
+        if (f.subtasks && f.subtasks.length > 0) {
+          var items = f.subtasks.map(function(s) {
+            var cls = s.completed ? ' class="done"' : '';
+            var check = s.completed ? '\\u2611' : '\\u2610';
+            return '<li' + cls + '><span class="subtask-check">' + check + '</span> ' + escapeHTML(s.title) + '</li>';
+          }).join('');
+          subtaskHTML = '<details class="subtask-details"><summary>Show sub-tasks (' + f.subtasks.length + ')</summary><ul class="subtask-list">' + items + '</ul></details>';
+        }
+
+        return '<div class="card">' +
+          '<div class="card-title"><a href="' + escapeHTML(f.html_url) + '" target="_blank" rel="noopener">' + escapeHTML(f.title) + '</a></div>' +
+          assigneeHTML + progressHTML + subtaskHTML +
+          '</div>';
+      }
+
+      function renderSection(title, features, emptyMsg) {
+        var body = '';
+        if (features.length === 0) {
+          body = '<p class="empty-msg">' + escapeHTML(emptyMsg) + '</p>';
+        } else {
+          body = '<div class="card-grid">' + features.map(renderCard).join('') + '</div>';
+        }
+        return '<div class="section"><h2 class="section-title">' + title + '</h2>' + body + '</div>';
+      }
+
+      function renderTimeline(activity) {
+        if (activity.length === 0) {
+          return '<div class="section"><h2 class="section-title">\\u{1F4E1} Recent Activity</h2><p class="empty-msg">No recent activity</p></div>';
+        }
+        var items = activity.map(function(a) {
+          var linkStart = a.url ? '<a href="' + escapeHTML(a.url) + '" target="_blank" rel="noopener">' : '';
+          var linkEnd = a.url ? '</a>' : '';
+          return '<div class="timeline-item">' +
+            '<div class="timeline-icon">' + eventIcon(a.type) + '</div>' +
+            '<div class="timeline-actor">' + escapeHTML(a.actor) + '</div>' +
+            '<div class="timeline-desc">' + linkStart + escapeHTML(a.description) + linkEnd + '</div>' +
+            '<div class="timeline-time">' + relativeTime(a.timestamp) + '</div>' +
+            '</div>';
+        }).join('');
+        return '<div class="section"><h2 class="section-title">\\u{1F4E1} Recent Activity</h2><div class="timeline">' + items + '</div></div>';
+      }
+
+      function render(data) {
+        var html = '<div class="header"><h1>Agent Forge</h1>' +
+          '<p class="updated">Last updated: ' + relativeTime(data.fetchedAt) + '</p></div>';
+        html += renderSection('\\u{1F6A7} In Progress', data.features.inProgress, 'No features in progress');
+        html += renderSection('\\u2705 Completed', data.features.completed, 'No completed features');
+        html += renderSection('\\u{1F4CB} Upcoming', data.features.upcoming, 'No upcoming features');
+        html += renderTimeline(data.activity);
+        appEl.innerHTML = html;
+      }
+
+      function showError(msg) {
+        appEl.innerHTML = '<div class="state-message">' +
+          '<p class="error-text">' + escapeHTML(msg) + '</p>' +
+          '<button class="retry-btn" onclick="window.__dashRetry()">Retry</button>' +
+          '</div>';
+      }
+
+      function fetchDashboard() {
+        fetch('/api/dashboard')
+          .then(function(res) {
+            if (!res.ok) throw new Error('Server returned ' + res.status);
+            return res.json();
+          })
+          .then(render)
+          .catch(function(err) {
+            showError('Failed to load dashboard data. ' + (err.message || ''));
+          });
+      }
+
+      window.__dashRetry = fetchDashboard;
+      fetchDashboard();
+      setInterval(fetchDashboard, REFRESH_MS);
+    })();
+  </script>
+</body>
+</html>`;
+}
+
+app.get('/dashboard', (req, res) => {
+  res.type('html').send(buildDashboardHTML());
+});
+
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
