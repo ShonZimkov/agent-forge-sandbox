@@ -1088,6 +1088,198 @@ function buildBoardHTML() {
       color: var(--color-text-muted);
       font-size: 0.95rem;
     }
+
+    /* Clickable card */
+    .card { cursor: pointer; transition: box-shadow 0.15s; }
+    .card:hover { box-shadow: var(--shadow-md), 0 0 0 2px var(--color-blue); }
+    .card.editing { cursor: default; }
+    .card.editing:hover { box-shadow: var(--shadow-md); }
+
+    /* Floating action button */
+    .fab {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: var(--color-blue);
+      color: #ffffff;
+      border: none;
+      font-size: 1.8rem;
+      line-height: 1;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(59,130,246,0.4);
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s, transform 0.15s;
+    }
+    .fab:hover { background: #2563eb; transform: scale(1.05); }
+
+    /* Modal overlay */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 200;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal {
+      background: var(--color-surface);
+      border-radius: var(--radius);
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      padding: 24px;
+      width: 480px;
+      max-width: 90vw;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+    .modal h2 {
+      font-size: 1.1rem;
+      margin-bottom: 16px;
+      color: var(--color-text);
+    }
+    .modal-field {
+      margin-bottom: 14px;
+    }
+    .modal-field label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 4px;
+      color: var(--color-text);
+    }
+    .modal-field input[type="text"],
+    .modal-field select,
+    .modal-field textarea {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid var(--color-border);
+      border-radius: 6px;
+      font-size: 0.9rem;
+      font-family: var(--font-stack);
+      color: var(--color-text);
+      background: var(--color-surface);
+    }
+    .modal-field textarea {
+      font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+      min-height: 80px;
+      resize: vertical;
+    }
+    .modal-field input:focus,
+    .modal-field select:focus,
+    .modal-field textarea:focus {
+      outline: none;
+      border-color: var(--color-blue);
+      box-shadow: 0 0 0 2px rgba(59,130,246,0.2);
+    }
+    .modal-error {
+      color: #dc2626;
+      font-size: 0.82rem;
+      margin-top: 4px;
+    }
+    .modal-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+      margin-top: 18px;
+    }
+
+    /* Color swatches */
+    .color-swatches {
+      display: flex;
+      gap: 8px;
+    }
+    .color-swatch {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: 3px solid transparent;
+      cursor: pointer;
+      transition: border-color 0.15s, transform 0.15s;
+    }
+    .color-swatch:hover { transform: scale(1.15); }
+    .color-swatch.selected { border-color: var(--color-text); }
+    .color-swatch[data-color="red"]    { background: var(--color-red); }
+    .color-swatch[data-color="blue"]   { background: var(--color-blue); }
+    .color-swatch[data-color="green"]  { background: var(--color-green); }
+    .color-swatch[data-color="yellow"] { background: var(--color-yellow); }
+    .color-swatch[data-color="purple"] { background: var(--color-purple); }
+    .color-swatch[data-color="gray"]   { background: var(--color-gray); }
+
+    /* Buttons */
+    .btn {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: var(--font-stack);
+      transition: background 0.15s;
+    }
+    .btn-primary { background: var(--color-blue); color: #fff; }
+    .btn-primary:hover { background: #2563eb; }
+    .btn-secondary { background: #e2e8f0; color: var(--color-text); }
+    .btn-secondary:hover { background: #cbd5e1; }
+    .btn-danger { background: var(--color-red); color: #fff; }
+    .btn-danger:hover { background: #dc2626; }
+    .btn-danger-text { background: none; color: var(--color-red); padding: 4px 8px; font-size: 0.78rem; }
+    .btn-danger-text:hover { background: #fef2f2; }
+
+    /* Inline editing */
+    .card-edit-title {
+      width: 100%;
+      padding: 4px 6px;
+      border: 1px solid var(--color-border);
+      border-radius: 4px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      font-family: var(--font-stack);
+      color: var(--color-text);
+      margin-bottom: 6px;
+    }
+    .card-edit-title:focus {
+      outline: none;
+      border-color: var(--color-blue);
+      box-shadow: 0 0 0 2px rgba(59,130,246,0.2);
+    }
+    .card-edit-textarea {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid var(--color-border);
+      border-radius: 4px;
+      font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+      font-size: 0.82rem;
+      color: var(--color-text);
+      resize: vertical;
+      min-height: 60px;
+      line-height: 1.5;
+    }
+    .card-edit-textarea:focus {
+      outline: none;
+      border-color: var(--color-blue);
+      box-shadow: 0 0 0 2px rgba(59,130,246,0.2);
+    }
+    .card-edit-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 8px;
+    }
+    .card-edit-actions .right-actions {
+      display: flex;
+      gap: 6px;
+    }
+    .card-edit-error {
+      color: #dc2626;
+      font-size: 0.78rem;
+      margin-top: 4px;
+    }
   </style>
 </head>
 <body>
@@ -1096,6 +1288,7 @@ function buildBoardHTML() {
   <div id="board" class="board-container">
     <div class="loading">Loading board\u2026</div>
   </div>
+  <button class="fab" id="fab-create" title="Create new card">+</button>
 
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"><\/script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js"><\/script>
@@ -1103,6 +1296,12 @@ function buildBoardHTML() {
     (function() {
       var boardEl = document.getElementById('board');
       var errorEl = document.getElementById('error-banner');
+      var fabEl = document.getElementById('fab-create');
+
+      // Cached board data for re-rendering and editing
+      var cachedColumns = [];
+      var cachedCardsByColumn = {};
+      var editingCardId = null;
 
       function showError(msg) {
         errorEl.textContent = msg;
@@ -1130,6 +1329,362 @@ function buildBoardHTML() {
         }
       }
 
+      // Find a card by id across all columns
+      function findCard(cardId) {
+        for (var colName in cachedCardsByColumn) {
+          var cards = cachedCardsByColumn[colName];
+          for (var i = 0; i < cards.length; i++) {
+            if (cards[i].id === cardId) return cards[i];
+          }
+        }
+        return null;
+      }
+
+      // Auto-grow textarea to fit content
+      function autoGrow(textarea) {
+        textarea.style.height = 'auto';
+        textarea.style.height = Math.max(textarea.scrollHeight, 60) + 'px';
+      }
+
+      // ── Create Modal ──
+
+      function openCreateModal() {
+        // Close any editing card first
+        if (editingCardId !== null) {
+          cancelEditing();
+        }
+
+        var overlay = document.createElement('div');
+        overlay.className = 'modal-overlay';
+        overlay.id = 'create-modal';
+
+        var modal = document.createElement('div');
+        modal.className = 'modal';
+
+        var title = document.createElement('h2');
+        title.textContent = 'Create Card';
+        modal.appendChild(title);
+
+        // Title field
+        var titleField = document.createElement('div');
+        titleField.className = 'modal-field';
+        var titleLabel = document.createElement('label');
+        titleLabel.textContent = 'Title *';
+        titleLabel.setAttribute('for', 'create-title');
+        var titleInput = document.createElement('input');
+        titleInput.type = 'text';
+        titleInput.id = 'create-title';
+        titleInput.placeholder = 'Card title';
+        titleInput.maxLength = 200;
+        var titleError = document.createElement('div');
+        titleError.className = 'modal-error';
+        titleError.id = 'create-title-error';
+        titleField.appendChild(titleLabel);
+        titleField.appendChild(titleInput);
+        titleField.appendChild(titleError);
+        modal.appendChild(titleField);
+
+        // Column dropdown
+        var colField = document.createElement('div');
+        colField.className = 'modal-field';
+        var colLabel = document.createElement('label');
+        colLabel.textContent = 'Column';
+        colLabel.setAttribute('for', 'create-column');
+        var colSelect = document.createElement('select');
+        colSelect.id = 'create-column';
+        cachedColumns.forEach(function(col) {
+          var opt = document.createElement('option');
+          opt.value = col.name;
+          opt.textContent = col.name;
+          if (col.name === 'Ideas') opt.selected = true;
+          colSelect.appendChild(opt);
+        });
+        colField.appendChild(colLabel);
+        colField.appendChild(colSelect);
+        modal.appendChild(colField);
+
+        // Color picker
+        var colorField = document.createElement('div');
+        colorField.className = 'modal-field';
+        var colorLabel = document.createElement('label');
+        colorLabel.textContent = 'Color';
+        colorField.appendChild(colorLabel);
+        var swatches = document.createElement('div');
+        swatches.className = 'color-swatches';
+        var selectedColor = 'gray';
+        var colors = ['red', 'blue', 'green', 'yellow', 'purple', 'gray'];
+        colors.forEach(function(c) {
+          var sw = document.createElement('div');
+          sw.className = 'color-swatch' + (c === selectedColor ? ' selected' : '');
+          sw.setAttribute('data-color', c);
+          sw.title = c;
+          sw.addEventListener('click', function() {
+            selectedColor = c;
+            swatches.querySelectorAll('.color-swatch').forEach(function(s) {
+              s.classList.remove('selected');
+            });
+            sw.classList.add('selected');
+          });
+          swatches.appendChild(sw);
+        });
+        colorField.appendChild(swatches);
+        modal.appendChild(colorField);
+
+        // Content textarea
+        var contentField = document.createElement('div');
+        contentField.className = 'modal-field';
+        var contentLabel = document.createElement('label');
+        contentLabel.textContent = 'Content (markdown)';
+        contentLabel.setAttribute('for', 'create-content');
+        var contentInput = document.createElement('textarea');
+        contentInput.id = 'create-content';
+        contentInput.placeholder = 'Card content (supports markdown)';
+        contentInput.rows = 4;
+        contentField.appendChild(contentLabel);
+        contentField.appendChild(contentInput);
+        modal.appendChild(contentField);
+
+        // API error display
+        var apiError = document.createElement('div');
+        apiError.className = 'modal-error';
+        apiError.id = 'create-api-error';
+        modal.appendChild(apiError);
+
+        // Actions
+        var actions = document.createElement('div');
+        actions.className = 'modal-actions';
+        var cancelBtn = document.createElement('button');
+        cancelBtn.className = 'btn btn-secondary';
+        cancelBtn.textContent = 'Cancel';
+        cancelBtn.type = 'button';
+        cancelBtn.addEventListener('click', closeCreateModal);
+        var submitBtn = document.createElement('button');
+        submitBtn.className = 'btn btn-primary';
+        submitBtn.textContent = 'Create';
+        submitBtn.type = 'button';
+        submitBtn.addEventListener('click', function() {
+          submitCreateForm(titleInput, colSelect, contentInput, selectedColor, apiError, titleError);
+        });
+        actions.appendChild(cancelBtn);
+        actions.appendChild(submitBtn);
+        modal.appendChild(actions);
+
+        overlay.appendChild(modal);
+
+        // Click backdrop to close
+        overlay.addEventListener('click', function(e) {
+          if (e.target === overlay) closeCreateModal();
+        });
+
+        document.body.appendChild(overlay);
+        titleInput.focus();
+      }
+
+      function closeCreateModal() {
+        var overlay = document.getElementById('create-modal');
+        if (overlay) overlay.remove();
+      }
+
+      function submitCreateForm(titleInput, colSelect, contentInput, color, apiError, titleError) {
+        // Clear previous errors
+        titleError.textContent = '';
+        apiError.textContent = '';
+
+        var titleVal = titleInput.value.trim();
+        if (!titleVal) {
+          titleError.textContent = 'Title is required';
+          titleInput.focus();
+          return;
+        }
+
+        var body = {
+          title: titleVal,
+          column: colSelect.value,
+          color: color
+        };
+        var contentVal = contentInput.value;
+        if (contentVal) {
+          body.content = contentVal;
+        }
+
+        fetch('/board/cards', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        })
+        .then(function(r) {
+          if (r.status === 201) {
+            closeCreateModal();
+            fetchBoard();
+            return;
+          }
+          return r.json().then(function(data) {
+            apiError.textContent = data.error || 'Failed to create card';
+          });
+        })
+        .catch(function(err) {
+          apiError.textContent = 'Network error: ' + err.message;
+        });
+      }
+
+      // ── Inline Editing ──
+
+      function startEditing(cardId, cardEl) {
+        // Only one card in edit mode at a time
+        if (editingCardId !== null && editingCardId !== cardId) {
+          cancelEditing();
+        }
+
+        var card = findCard(cardId);
+        if (!card) return;
+
+        editingCardId = cardId;
+        cardEl.classList.add('editing');
+        cardEl.innerHTML = '';
+
+        // Editable title
+        var titleInput = document.createElement('input');
+        titleInput.type = 'text';
+        titleInput.className = 'card-edit-title';
+        titleInput.value = card.title;
+        titleInput.maxLength = 200;
+        cardEl.appendChild(titleInput);
+
+        // Editable content textarea
+        var textarea = document.createElement('textarea');
+        textarea.className = 'card-edit-textarea';
+        textarea.value = card.content || '';
+        textarea.rows = 3;
+        textarea.placeholder = 'Card content (markdown)';
+        textarea.addEventListener('input', function() { autoGrow(textarea); });
+        cardEl.appendChild(textarea);
+
+        // Error display
+        var errorDiv = document.createElement('div');
+        errorDiv.className = 'card-edit-error';
+        cardEl.appendChild(errorDiv);
+
+        // Actions row
+        var actionsRow = document.createElement('div');
+        actionsRow.className = 'card-edit-actions';
+
+        // Left: delete button
+        var deleteBtn = document.createElement('button');
+        deleteBtn.className = 'btn btn-danger-text';
+        deleteBtn.textContent = 'Delete';
+        deleteBtn.type = 'button';
+        deleteBtn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          deleteCard(cardId);
+        });
+
+        // Right: cancel + save
+        var rightActions = document.createElement('div');
+        rightActions.className = 'right-actions';
+
+        var cancelBtn = document.createElement('button');
+        cancelBtn.className = 'btn btn-secondary';
+        cancelBtn.textContent = 'Cancel';
+        cancelBtn.type = 'button';
+        cancelBtn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          cancelEditing();
+        });
+
+        var saveBtn = document.createElement('button');
+        saveBtn.className = 'btn btn-primary';
+        saveBtn.textContent = 'Save';
+        saveBtn.type = 'button';
+        saveBtn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          saveCard(cardId, titleInput, textarea, errorDiv);
+        });
+
+        rightActions.appendChild(cancelBtn);
+        rightActions.appendChild(saveBtn);
+        actionsRow.appendChild(deleteBtn);
+        actionsRow.appendChild(rightActions);
+        cardEl.appendChild(actionsRow);
+
+        // Auto-grow after rendering
+        setTimeout(function() { autoGrow(textarea); }, 0);
+        titleInput.focus();
+      }
+
+      function cancelEditing() {
+        if (editingCardId === null) return;
+        var card = findCard(editingCardId);
+        editingCardId = null;
+        // Re-render the board to restore card views
+        renderBoard(cachedColumns, cachedCardsByColumn);
+      }
+
+      function saveCard(cardId, titleInput, textarea, errorDiv) {
+        errorDiv.textContent = '';
+        var card = findCard(cardId);
+        if (!card) return;
+
+        var newTitle = titleInput.value.trim();
+        if (!newTitle) {
+          errorDiv.textContent = 'Title is required';
+          titleInput.focus();
+          return;
+        }
+
+        // Only send changed fields
+        var body = {};
+        if (newTitle !== card.title) body.title = newTitle;
+        if (textarea.value !== (card.content || '')) body.content = textarea.value;
+
+        // Nothing changed
+        if (Object.keys(body).length === 0) {
+          cancelEditing();
+          return;
+        }
+
+        fetch('/board/cards/' + cardId, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        })
+        .then(function(r) {
+          if (r.ok) {
+            editingCardId = null;
+            fetchBoard();
+            return;
+          }
+          return r.json().then(function(data) {
+            errorDiv.textContent = data.error || 'Failed to save card';
+          });
+        })
+        .catch(function(err) {
+          errorDiv.textContent = 'Network error: ' + err.message;
+        });
+      }
+
+      function deleteCard(cardId) {
+        if (!confirm('Delete this card? This cannot be undone.')) return;
+
+        fetch('/board/cards/' + cardId, {
+          method: 'DELETE'
+        })
+        .then(function(r) {
+          if (r.ok) {
+            editingCardId = null;
+            fetchBoard();
+            return;
+          }
+          return r.json().then(function(data) {
+            showError(data.error || 'Failed to delete card');
+          });
+        })
+        .catch(function(err) {
+          showError('Network error: ' + err.message);
+        });
+      }
+
+      // ── Board Rendering ──
+
       function renderBoard(columns, cardsByColumn) {
         boardEl.innerHTML = '';
         columns.forEach(function(col) {
@@ -1155,6 +1710,18 @@ function buildBoardHTML() {
               var cardEl = document.createElement('div');
               cardEl.className = 'card';
               cardEl.setAttribute('data-color', card.color || 'gray');
+              cardEl.setAttribute('data-card-id', card.id);
+
+              // If this card is currently being edited, render edit mode
+              if (editingCardId === card.id) {
+                cardEl.classList.add('editing');
+                body.appendChild(cardEl);
+                // Defer startEditing so the element is in the DOM
+                (function(id, el) {
+                  setTimeout(function() { startEditing(id, el); }, 0);
+                })(card.id, cardEl);
+                return;
+              }
 
               var titleEl = document.createElement('div');
               titleEl.className = 'card-title';
@@ -1167,6 +1734,11 @@ function buildBoardHTML() {
                 contentEl.innerHTML = renderMarkdown(card.content);
                 cardEl.appendChild(contentEl);
               }
+
+              // Click handler to enter edit mode
+              cardEl.addEventListener('click', function() {
+                startEditing(card.id, cardEl);
+              });
 
               body.appendChild(cardEl);
             });
@@ -1190,15 +1762,18 @@ function buildBoardHTML() {
         ])
         .then(function(results) {
           hideError();
-          var columns = results[0].columns || [];
-          var cardsByColumn = results[1].columns || {};
-          renderBoard(columns, cardsByColumn);
+          cachedColumns = results[0].columns || [];
+          cachedCardsByColumn = results[1].columns || {};
+          renderBoard(cachedColumns, cachedCardsByColumn);
         })
         .catch(function(err) {
           showError('Error loading board: ' + err.message);
           boardEl.innerHTML = '';
         });
       }
+
+      // Wire up FAB
+      fabEl.addEventListener('click', openCreateModal);
 
       fetchBoard();
     })();
