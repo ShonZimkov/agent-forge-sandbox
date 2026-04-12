@@ -86,6 +86,62 @@ app.post('/notes', (req, res) => {
   res.status(201).json(note);
 });
 
+app.get('/notes', (req, res) => {
+  const { tag, sort, page: pageParam, limit: limitParam } = req.query;
+
+  // Validate page
+  const page = pageParam !== undefined ? Number(pageParam) : 1;
+  if (!Number.isInteger(page) || page < 1) {
+    return res.status(400).json({ error: 'Page must be a positive integer' });
+  }
+
+  // Validate limit
+  const limit = limitParam !== undefined ? Number(limitParam) : 10;
+  if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
+    return res.status(400).json({ error: 'Limit must be an integer between 1 and 100' });
+  }
+
+  // Validate sort
+  const validSorts = ['newest', 'oldest', 'updated'];
+  const sortBy = sort || 'newest';
+  if (!validSorts.includes(sortBy)) {
+    return res.status(400).json({ error: 'Sort must be one of: newest, oldest, updated' });
+  }
+
+  // Filter: exclude soft-deleted notes
+  let filtered = notes.filter(n => n.deletedAt === null);
+
+  // Filter by tag (case-insensitive)
+  if (tag !== undefined) {
+    const normalizedTag = tag.toLowerCase();
+    filtered = filtered.filter(n => n.tags.includes(normalizedTag));
+  }
+
+  // Sort: pinned notes first, then by date
+  filtered.sort((a, b) => {
+    // Pinned notes always come first
+    if (a.pinned && !b.pinned) return -1;
+    if (!a.pinned && b.pinned) return 1;
+
+    // Then sort by the chosen field
+    if (sortBy === 'oldest') {
+      return new Date(a.createdAt) - new Date(b.createdAt);
+    } else if (sortBy === 'updated') {
+      return new Date(b.updatedAt) - new Date(a.updatedAt);
+    } else {
+      // newest (default)
+      return new Date(b.createdAt) - new Date(a.createdAt);
+    }
+  });
+
+  // Paginate
+  const total = filtered.length;
+  const totalPages = Math.ceil(total / limit);
+  const items = filtered.slice((page - 1) * limit, page * limit);
+
+  res.json({ items, total, page, totalPages });
+});
+
 app.get('/notes/:id', (req, res) => {
   const id = validateNoteId(req.params.id);
   if (id === null) {
