@@ -1,5 +1,6 @@
 import express from 'express';
 import { createRequire } from 'module';
+import { fetchIssues, fetchPullRequests, fetchRecentEvents } from './github.js';
 
 const require = createRequire(import.meta.url);
 const pkg = require('./package.json');
@@ -151,6 +152,153 @@ app.delete('/notes/:id', (req, res) => {
 
   note.deletedAt = new Date().toISOString();
   res.json({ message: 'Note deleted' });
+});
+
+// --- Dashboard ---
+
+function parseCheckboxes(body) {
+  if (!body) {
+    return { done: 0, total: 0, percent: 0, subtasks: [] };
+  }
+
+  const matches = [...body.matchAll(/- \[(x| )\]\s*(.*)/g)];
+  const subtasks = matches.map(m => ({
+    title: m[2].trim(),
+    completed: m[1] === 'x',
+  }));
+
+  const total = subtasks.length;
+  const done = subtasks.filter(s => s.completed).length;
+  const percent = total > 0 ? Math.round((done / total) * 100) : 0;
+
+  return { done, total, percent, subtasks };
+}
+
+function isFeature(issue) {
+  const hasFeatureLabel = issue.labels.some(
+    l => l.name.toLowerCase() === 'feature'
+  );
+  const hasCheckboxes = issue.body && /- \[(x| )\]/.test(issue.body);
+  return hasFeatureLabel || hasCheckboxes;
+}
+
+function mapStatus(issue) {
+  if (issue.state === 'closed') return 'completed';
+
+  const hasInProgressLabel = issue.labels.some(
+    l => l.name.toLowerCase() === 'in progress' || l.name.toLowerCase() === 'in-progress'
+  );
+  if (issue.assignee || hasInProgressLabel) return 'in_progress';
+
+  return 'upcoming';
+}
+
+function buildFeature(issue) {
+  const { done, total, percent, subtasks } = parseCheckboxes(issue.body);
+  return {
+    id: issue.id,
+    number: issue.number,
+    title: issue.title,
+    status: mapStatus(issue),
+    html_url: issue.html_url,
+    labels: issue.labels.map(l => l.name),
+    progress: { done, total, percent },
+    subtasks,
+    assignee: issue.assignee ? issue.assignee.login : null,
+    updatedAt: issue.updated_at,
+  };
+}
+
+function describeEvent(event) {
+  const actor = event.actor?.login ?? 'unknown';
+  const repo = event.repo?.name ?? '';
+
+  switch (event.type) {
+    case 'IssuesEvent': {
+      const action = event.payload?.action ?? 'updated';
+      const title = event.payload?.issue?.title ?? '';
+      return {
+        type: 'IssuesEvent',
+        actor,
+        description: `${actor} ${action} issue "${title}"`,
+        url: event.payload?.issue?.html_url ?? null,
+        timestamp: event.created_at,
+      };
+    }
+    case 'PullRequestEvent': {
+      const action = event.payload?.action ?? 'updated';
+      const title = event.payload?.pull_request?.title ?? '';
+      return {
+        type: 'PullRequestEvent',
+        actor,
+        description: `${actor} ${action} PR "${title}"`,
+        url: event.payload?.pull_request?.html_url ?? null,
+        timestamp: event.created_at,
+      };
+    }
+    case 'PushEvent': {
+      const count = event.payload?.size ?? 0;
+      return {
+        type: 'PushEvent',
+        actor,
+        description: `${actor} pushed ${count} commit${count !== 1 ? 's' : ''} to ${repo}`,
+        url: null,
+        timestamp: event.created_at,
+      };
+    }
+    case 'IssueCommentEvent': {
+      const title = event.payload?.issue?.title ?? '';
+      return {
+        type: 'IssueCommentEvent',
+        actor,
+        description: `${actor} commented on "${title}"`,
+        url: event.payload?.comment?.html_url ?? null,
+        timestamp: event.created_at,
+      };
+    }
+    default:
+      return {
+        type: event.type ?? 'UnknownEvent',
+        actor,
+        description: `${actor} performed ${event.type ?? 'an action'} on ${repo}`,
+        url: null,
+        timestamp: event.created_at,
+      };
+  }
+}
+
+app.get('/api/dashboard', async (req, res) => {
+  try {
+    const [issues, pullRequests, events] = await Promise.all([
+      fetchIssues(),
+      fetchPullRequests(),
+      fetchRecentEvents(),
+    ]);
+
+    const features = issues.filter(isFeature).map(buildFeature);
+
+    const grouped = {
+      inProgress: features.filter(f => f.status === 'in_progress'),
+      completed: features.filter(f => f.status === 'completed'),
+      upcoming: features.filter(f => f.status === 'upcoming'),
+    };
+
+    const activity = events
+      .map(describeEvent)
+      .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+      .slice(0, 15);
+
+    res.json({
+      features: grouped,
+      activity,
+      fetchedAt: new Date().toISOString(),
+    });
+  } catch (err) {
+    res.status(502).json({
+      error: 'Failed to fetch data from GitHub',
+      details: err.message,
+    });
+  }
 });
 
 app.listen(PORT, () => {
