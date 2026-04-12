@@ -1,0 +1,17 @@
+{
+  "name": "agent-forge-sandbox",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Test project for Agent Forge AI dev team",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "Shon Zimkov",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^5.2.1"
+  }
+}
