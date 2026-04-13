@@ -42,6 +42,10 @@ app.get('/version', (req, res) => {
   res.json({ version: pkg.version, name: pkg.name });
 });
 
+app.get('/hello', (req, res) => {
+  res.json({ message: 'Hello from Agent Forge!' });
+});
+
 app.post('/tasks', (req, res) => {
   const { title, description } = req.body;
   const task = {
